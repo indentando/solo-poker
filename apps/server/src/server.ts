@@ -4,6 +4,7 @@ import type { Rng } from '@solo-poker/engine';
 import { Server } from 'socket.io';
 import { RateLimiter, cryptoRng } from './security';
 import { registerSocketHandlers, type PokerServer } from './sockets';
+import { createStaticHandler } from './static-files';
 import { TableManager } from './table-manager';
 import { DEFAULT_TIMINGS, type RoomTimings } from './table-room';
 
@@ -14,6 +15,8 @@ export interface PokerServerOptions {
   rng?: Rng;
   now?: () => number;
   maxTables?: number;
+  /** Carpeta con la web compilada. Si se indica, el servidor también sirve la web. */
+  staticDir?: string;
 }
 
 const SWEEP_INTERVAL_MS = 60_000;
@@ -29,12 +32,16 @@ export function createPokerServer(opts: PokerServerOptions = {}) {
   const createLimiter = new RateLimiter(5, 60_000, now);
   const joinLimiter = new RateLimiter(10, 60_000, now);
 
+  const serveStatic = opts.staticDir ? createStaticHandler(opts.staticDir) : null;
+
+  // Socket.IO atiende /socket.io/ antes de llegar aquí.
   const httpServer = createServer((req, res) => {
     if (req.url === '/health') {
-      res.writeHead(200, { 'content-type': 'application/json' });
+      res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' });
       res.end(JSON.stringify({ status: 'ok', tables: manager.size }));
       return;
     }
+    if (serveStatic?.(req, res)) return;
     res.writeHead(404).end();
   });
 

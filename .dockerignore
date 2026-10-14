@@ -1,0 +1,12 @@
+**/node_modules
+**/dist
+**/.angular
+.git
+.github
+.claude
+docs
+**/*.test.ts
+**/test
+*.md
+.env
+.env.*

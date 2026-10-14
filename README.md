@@ -118,6 +118,17 @@ Abre `http://localhost:4200`, crea una mesa y comparte el enlace. El servidor es
 
 > **Varios jugadores en el mismo navegador:** usa un origen distinto para cada uno, por ejemplo `http://localhost:4200` y `http://test.localhost:4200`. Las pestañas del mismo origen comparten la sesión.
 
+## Despliegue
+
+En producción, un único proceso de Node sirve la web compilada y el Socket.IO desde el mismo origen. La imagen se construye con el [`Dockerfile`](Dockerfile) y se despliega en [Fly.io](https://fly.io) con [`fly.toml`](fly.toml): una sola máquina pequeña en Madrid, siempre encendida, porque las mesas viven en memoria.
+
+```bash
+fly apps create solo-poker
+fly deploy --ha=false
+```
+
+`--ha=false` evita que Fly cree una segunda máquina: con dos, cada jugador podría acabar en una distinta y no verse entre ellos. Cada despliegue reinicia el servidor y cierra las partidas en curso.
+
 ## Próximamente
 
 - [ ] Despliegue en [solo-poker.app](https://solo-poker.app)

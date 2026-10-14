@@ -119,6 +119,17 @@ Open `http://localhost:4200`, create a table and share the link. The server list
 
 > **Several players in the same browser:** use a different origin for each one, e.g. `http://localhost:4200` and `http://test.localhost:4200`. Tabs on the same origin share the session.
 
+## Deployment
+
+In production, a single Node process serves both the compiled web app and Socket.IO from the same origin. The image is built from the [`Dockerfile`](Dockerfile) and deployed to [Fly.io](https://fly.io) with [`fly.toml`](fly.toml): one small, always-on machine in Madrid, because tables live in memory.
+
+```bash
+fly apps create solo-poker
+fly deploy --ha=false
+```
+
+`--ha=false` stops Fly from creating a second machine: with two, players could land on different machines and not see each other. Every deploy restarts the server and ends games in progress.
+
 ## Coming soon
 
 - [ ] Deployment at [solo-poker.app](https://solo-poker.app)
