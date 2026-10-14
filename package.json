@@ -1,6 +1,17 @@
 {
   "name": "solo-poker",
   "private": true,
+  "description": "Póker Texas Hold'em con amigos, en el navegador y sin registros.",
+  "license": "MIT",
+  "author": "Alex Dorado",
+  "homepage": "https://solo-poker.app",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/indentando/solo-poker.git"
+  },
+  "engines": {
+    "node": ">=22"
+  },
   "type": "module",
   "workspaces": [
     "packages/*",
