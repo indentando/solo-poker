@@ -36,6 +36,12 @@ export function createPokerServer(opts: PokerServerOptions = {}) {
 
   // Socket.IO atiende /socket.io/ antes de llegar aquí.
   const httpServer = createServer((req, res) => {
+    // Una sola dirección oficial: www.solo-poker.app → solo-poker.app.
+    const host = req.headers.host ?? '';
+    if (host.startsWith('www.')) {
+      res.writeHead(301, { location: `https://${host.slice(4)}${req.url ?? '/'}` }).end();
+      return;
+    }
     if (req.url === '/health') {
       res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' });
       res.end(JSON.stringify({ status: 'ok', tables: manager.size }));

@@ -13,6 +13,7 @@ kill_timeout = "10s"
 [env]
   NODE_ENV = "production"
   PORT = "8080"
+  CORS_ORIGIN = "https://solo-poker.app,https://solo-poker.fly.dev"
 
 [http_service]
   internal_port = 8080

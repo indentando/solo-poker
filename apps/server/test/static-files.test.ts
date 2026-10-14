@@ -57,6 +57,16 @@ describe('web estática', () => {
     expect((await fetch(`${url}/..%2F..%2Fpackage.json`)).status).toBe(404);
   });
 
+  it('redirige www al dominio principal conservando la ruta', async () => {
+    const { request } = await import('node:http');
+    const { port } = new URL(url);
+    const res = await new Promise<import('node:http').IncomingMessage>((resolve) =>
+      request({ host: '127.0.0.1', port, path: '/mesa/K7X-92Q', headers: { host: 'www.solo-poker.app' } }, resolve).end(),
+    );
+    expect(res.statusCode).toBe(301);
+    expect(res.headers.location).toBe('https://solo-poker.app/mesa/K7X-92Q');
+  });
+
   it('mantiene el health check', async () => {
     expect(await (await fetch(`${url}/health`)).json()).toEqual({ status: 'ok', tables: 0 });
   });
