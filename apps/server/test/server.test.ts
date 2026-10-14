@@ -72,6 +72,7 @@ describe('servidor Socket.IO', () => {
       password: 'secreta',
       maxPlayers: 2,
       buyIn: 1000,
+      rebuys: { max: 0, untilMinutes: null },
     });
     if (!created.ok) throw new Error(created.error);
     expect(created.tableId).toMatch(/^[0-9A-Z]{3}-[0-9A-Z]{3}$/);
@@ -138,6 +139,7 @@ describe('servidor Socket.IO', () => {
         password: 'x',
         maxPlayers: 20,
         buyIn: 1,
+        rebuys: { max: 0, untilMinutes: null },
       }),
     ).toEqual({ ok: false, error: 'INVALID_PAYLOAD' });
     expect(await socket.emitWithAck('game:action', { handNumber: 1, action: { type: 'fold' } })).toEqual({
@@ -154,6 +156,7 @@ describe('servidor Socket.IO', () => {
       password: 'secreta',
       maxPlayers: 3,
       buyIn: 1000,
+      rebuys: { max: 0, untilMinutes: null },
     });
     if (!created.ok) throw new Error(created.error);
     ana.disconnect();

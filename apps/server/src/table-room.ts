@@ -2,8 +2,10 @@ import {
   addPlayer,
   applyAction,
   createTable,
+  declineRebuy,
   getPlayerView,
   handleTimeout,
+  rebuy,
   removePlayer,
   setConnected,
   standardBlindStructure,
@@ -13,6 +15,7 @@ import {
   type GameEvent,
   type PlayerId,
   type PlayerView,
+  type RebuyRules,
   type Result,
   type Rng,
   type TableState,
@@ -54,6 +57,7 @@ export interface RoomOptions {
   passwordHash: string;
   maxPlayers: number;
   buyIn: number;
+  rebuy: RebuyRules;
   timings: RoomTimings;
   rng: Rng;
   now: () => number;
@@ -82,6 +86,7 @@ export class TableRoom {
   private readonly graceTimers = new Map<PlayerId, Timer>();
   private turnTimer: Timer | null = null;
   private phaseTimer: Timer | null = null;
+  private rebuyTimer: Timer | null = null;
   private countdownAt: number | null = null;
 
   constructor(opts: RoomOptions) {
@@ -97,6 +102,7 @@ export class TableRoom {
       buyIn: opts.buyIn,
       blindStructure: standardBlindStructure(opts.buyIn),
       turnTimeoutMs: opts.timings.turnTimeoutMs,
+      rebuy: opts.rebuy,
     });
   }
 
@@ -160,6 +166,16 @@ export class TableRoom {
     return this.commit(applyAction(this.state, playerId, action, this.now()));
   }
 
+  /** Tras quedarse sin fichas: vuelve con una entrada nueva en la siguiente mano. */
+  rebuy(playerId: PlayerId): Ack {
+    return this.commit(rebuy(this.state, playerId, this.now()));
+  }
+
+  /** Tras quedarse sin fichas: no recompra y se queda mirando. */
+  spectate(playerId: PlayerId): Ack {
+    return this.commit(declineRebuy(this.state, playerId, this.now()));
+  }
+
   disconnected(playerId: PlayerId, connection: Connection): void {
     // Si ya la sustituyó otra conexión, esta desconexión no cuenta.
     if (this.connections.get(playerId) !== connection) return;
@@ -189,6 +205,7 @@ export class TableRoom {
 
   dispose(): void {
     this.clearTurnTimer();
+    this.clearRebuyTimer();
     this.clearPhaseTimer();
     for (const timer of this.graceTimers.values()) clearTimeout(timer);
     this.graceTimers.clear();
@@ -216,6 +233,7 @@ export class TableRoom {
   /** Programa el siguiente paso automático según el estado actual. */
   private schedule(): void {
     this.clearTurnTimer();
+    this.clearRebuyTimer();
     const { status, hand, players, config } = this.state;
 
     if (status === 'waiting') {
@@ -250,6 +268,23 @@ export class TableRoom {
           Math.max(0, hand.turnDeadline - this.now()),
         );
       }
+      return;
+    }
+
+    // Alguien se ha quedado sin fichas y está decidiendo si recompra: se le espera.
+    // Si se le acaba el plazo, se queda mirando.
+    const deadlines = players.map((p) => p.rebuyDeadline).filter((d): d is number => d !== null);
+    if (deadlines.length > 0) {
+      this.rebuyTimer = setTimeout(
+        () => {
+          this.rebuyTimer = null;
+          const now = this.now();
+          for (const player of this.state.players) {
+            if (player.rebuyDeadline !== null && player.rebuyDeadline <= now) this.spectate(player.id);
+          }
+        },
+        Math.max(0, Math.min(...deadlines) - this.now()),
+      );
       return;
     }
 
@@ -288,6 +323,11 @@ export class TableRoom {
   private clearTurnTimer(): void {
     if (this.turnTimer) clearTimeout(this.turnTimer);
     this.turnTimer = null;
+  }
+
+  private clearRebuyTimer(): void {
+    if (this.rebuyTimer) clearTimeout(this.rebuyTimer);
+    this.rebuyTimer = null;
   }
 
   private clearPhaseTimer(): void {

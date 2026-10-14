@@ -41,7 +41,9 @@ const RING_LENGTH = 2 * Math.PI * RING_RADIUS;
       {{ player().nickname }}
     </div>
     <div class="text-center text-[15px] tabular-nums" [class.opacity-35]="dimmed()">
-      @if (player().status === 'eliminated') {
+      @if (player().deciding) {
+        <span class="text-muted">¿Recompra?</span>
+      } @else if (player().status === 'eliminated') {
         <span class="text-muted">Fuera</span>
       } @else {
         {{ player().stack | money: 'plain' }}
@@ -140,6 +142,7 @@ export class Seat {
   );
   protected readonly actionLabel = computed(() => {
     const player = this.player();
+    if (player.deciding) return '…';
     if (player.handState === 'allIn') return 'All-in';
     return player.lastAction ? ACTION_LABELS[player.lastAction] : null;
   });

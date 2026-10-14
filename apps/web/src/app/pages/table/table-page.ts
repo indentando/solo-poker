@@ -1,10 +1,11 @@
 import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { normalizeTableId, type TableInfo } from '@solo-poker/protocol';
-import { errorMessage } from '../../core/format';
+import { errorMessage, formatMoney } from '../../core/format';
 import { loadSession } from '../../core/storage';
 import { TableService } from '../../core/table.service';
 import { BackIcon } from '../../ui/back-icon';
+import { GameSummary } from './game-summary';
 import { GameTable } from './game-table';
 import { JoinForm } from './join-form';
 import { WaitingRoom } from './waiting-room';
@@ -21,7 +22,7 @@ type Phase =
  */
 @Component({
   selector: 'app-table-page',
-  imports: [RouterLink, BackIcon, JoinForm, WaitingRoom, GameTable],
+  imports: [RouterLink, BackIcon, JoinForm, WaitingRoom, GameTable, GameSummary],
   template: `
     <main class="page" [class.page-wide]="inGame()">
       @switch (phase().kind) {
@@ -52,6 +53,8 @@ type Phase =
                 </button>
               </header>
               <app-waiting-room [view]="view" [countdownAt]="table.countdownAt()" />
+            } @else if (view.status === 'finished') {
+              <app-game-summary [view]="view" (leave)="leave()" />
             } @else {
               <app-game-table (leave)="requestLeave()" />
             }
@@ -103,7 +106,7 @@ export class TablePage {
 
   /** Con la partida en marcha, en escritorio la mesa usa todo el ancho. */
   protected readonly inGame = computed(
-    () => this.phase().kind === 'seated' && !!this.view() && this.view()!.status !== 'waiting',
+    () => this.phase().kind === 'seated' && this.view()?.status === 'playing',
   );
 
   protected readonly errorText = computed(() => {
@@ -116,8 +119,9 @@ export class TablePage {
   });
   protected readonly leaveWarning = computed(() => {
     const view = this.view();
-    if (view?.status === 'playing' && this.table.me()?.status === 'active') {
-      return 'La partida está en curso: si sales, quedarás eliminado y perderás tus fichas.';
+    const me = this.table.me();
+    if (view?.status === 'playing' && me?.status === 'active') {
+      return `La partida está en curso: si sales, dejas de jugar. Te llevas las fichas que tengas ahora (${formatMoney(me.stack)}), salvo lo que ya hayas apostado en esta mano.`;
     }
     return 'Dejarás libre tu asiento.';
   });

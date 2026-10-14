@@ -35,12 +35,22 @@ export interface BlindStructure {
   increaseEvery: { type: 'minutes' | 'hands'; value: number };
 }
 
+export interface RebuyRules {
+  /** Recompras permitidas por jugador. 0 = sin recompras, null = ilimitadas. */
+  maxPerPlayer: number | null;
+  /** Minutos desde el inicio de la partida durante los que se puede recomprar. null = toda la partida. */
+  untilMinutes: number | null;
+  /** Tiempo para decidir si recomprar tras quedarse sin fichas. */
+  decisionMs: number;
+}
+
 export interface TableConfig {
   id: string;
   maxPlayers: number;
   buyIn: Cents;
   blindStructure: BlindStructure;
   turnTimeoutMs: number;
+  rebuy: RebuyRules;
 }
 
 // ─── Estado ─────────────────────────────────────────────────────
@@ -51,9 +61,17 @@ export interface Player {
   /** Icono del jugador ("e:🦊" o "p:spade"). El formato lo valida el protocolo; el motor exige que sea único. */
   avatar: string;
   seat: number;
+  /**
+   * Fichas del jugador. Si abandona la partida conserva lo que tenía: cuenta
+   * como lo que se lleva al saldar cuentas.
+   */
   stack: Cents;
   status: 'active' | 'eliminated';
   connected: boolean;
+  /** Recompras hechas. Lo invertido en total es buyIn × (1 + rebuys). */
+  rebuys: number;
+  /** Mientras no sea null, el jugador eliminado está decidiendo si recompra (hasta esa hora). */
+  rebuyDeadline: number | null;
 }
 
 export type SeatState = 'active' | 'folded' | 'allIn';
@@ -112,6 +130,9 @@ export interface TableState {
   handNumber: number;
   hand: HandState | null;
   winnerId: PlayerId | null;
+  /** Inicio de la partida (para la ventana de recompras). */
+  startedAt: number | null;
+  finishedAt: number | null;
 }
 
 // ─── Acciones ───────────────────────────────────────────────────
@@ -155,7 +176,9 @@ export type GameEvent =
   | { type: 'streetDealt'; street: Street; cards: Card[] }
   | { type: 'showdown'; reveals: Record<PlayerId, [Card, Card]> }
   | ({ type: 'potAwarded' } & PotResult)
-  | { type: 'playerEliminated'; playerId: PlayerId }
+  | { type: 'playerEliminated'; playerId: PlayerId; canRebuy: boolean }
+  | { type: 'playerRebought'; playerId: PlayerId; amount: Cents; rebuys: number }
+  | { type: 'rebuyDeclined'; playerId: PlayerId }
   | { type: 'gameOver'; winnerId: PlayerId | null };
 
 // ─── Resultado de las operaciones ───────────────────────────────
@@ -175,7 +198,9 @@ export type EngineError =
   | 'NO_HAND_IN_PROGRESS'
   | 'NOT_YOUR_TURN'
   | 'ILLEGAL_ACTION'
-  | 'INVALID_AMOUNT';
+  | 'INVALID_AMOUNT'
+  | 'REBUY_NOT_ALLOWED'
+  | 'WAITING_FOR_REBUY';
 
 export type Result =
   | { ok: true; state: TableState; events: GameEvent[] }
@@ -195,6 +220,14 @@ export interface PlayerView {
     level: number;
     nextLevelAt: { type: 'minutes' | 'hands'; at: number } | null;
   };
+  rebuy: {
+    maxPerPlayer: number | null;
+    untilMinutes: number | null;
+    /** Hora a la que se cierran las recompras, o null si no se cierran (o no ha empezado la partida). */
+    closesAt: number | null;
+  };
+  startedAt: number | null;
+  finishedAt: number | null;
   players: {
     id: PlayerId;
     nickname: string;
@@ -203,6 +236,9 @@ export interface PlayerView {
     stack: Cents;
     status: Player['status'];
     connected: boolean;
+    rebuys: number;
+    /** Eliminado y decidiendo si recompra. */
+    deciding: boolean;
     handState: SeatState | null;
     betThisStreet: Cents;
     lastAction: ActionType | null;
@@ -223,5 +259,7 @@ export interface PlayerView {
     handCategory: HandCategory | null;
     /** null si no es tu turno. */
     legal: LegalActions | null;
+    /** Si te has quedado sin fichas y puedes recomprar: hasta cuándo puedes decidir. */
+    rebuyDeadline: number | null;
   } | null;
 }

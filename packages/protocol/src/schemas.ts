@@ -25,6 +25,10 @@ export const createTableSchema = z.object({
   password,
   maxPlayers: z.number().int().min(LIMITS.minPlayers).max(LIMITS.maxPlayers),
   buyIn: z.number().int().min(LIMITS.minBuyIn).max(LIMITS.maxBuyIn),
+  rebuys: z.object({
+    max: z.number().int().min(0).max(LIMITS.maxRebuys).nullable(),
+    untilMinutes: z.number().int().min(LIMITS.minRebuyMinutes).max(LIMITS.maxRebuyMinutes).nullable(),
+  }),
 });
 
 export const tableInfoSchema = z.object({ tableId });
@@ -34,6 +38,8 @@ export const joinTableSchema = z.object({ tableId, password, nickname, avatar })
 export const rejoinTableSchema = z.object({ tableId, token: z.string().min(1).max(100) });
 
 export const leaveTableSchema = z.object({});
+
+export const rebuyDecisionSchema = z.object({});
 
 export const actionSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('fold') }),

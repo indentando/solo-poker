@@ -130,20 +130,21 @@ const TIME_WARNING_MS = 5_000;
       </div>
     }
 
-    @if (v.status === 'finished') {
-      <div class="sheet-backdrop">
-        <div class="sheet text-center" animate.enter="sheet-enter">
-          <p class="text-5xl">{{ v.winnerId === v.you?.id ? '🏆' : '🃏' }}</p>
-          <h2 class="mt-4 text-2xl font-light">{{ gameOverTitle() }}</h2>
-          <p class="mt-2 text-muted">Partida terminada tras {{ v.handNumber }} manos.</p>
-          <button class="btn btn-primary mt-8 w-full" (click)="leave.emit()">Volver al inicio</button>
-        </div>
-      </div>
-    } @else if (me()?.status === 'eliminated') {
-      <div class="fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-6">
-        <div class="flex w-full max-w-md items-center justify-between gap-3 rounded-3xl bg-surface p-4" animate.enter="sheet-enter">
-          <span class="text-sm">Te has quedado sin fichas.</span>
-          <button class="btn btn-sm" (click)="leave.emit()">Salir</button>
+    <!-- Te has quedado sin fichas y puedes recomprar: panel fijo abajo, sin capa encima de la mesa. -->
+    @if (rebuySecondsLeft() !== null) {
+      <div class="fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+        <div class="w-full max-w-md rounded-3xl border-[1.5px] border-line bg-surface p-5 shadow-2xl" animate.enter="sheet-enter">
+          <div class="flex items-baseline justify-between">
+            <h2 class="text-xl font-light">Te has quedado sin fichas</h2>
+            <span class="text-sm tabular-nums text-muted">{{ rebuySecondsLeft() }} s</span>
+          </div>
+          <p class="mt-1 text-sm text-muted">{{ rebuyHint() }}</p>
+          <div class="mt-5 grid grid-cols-2 gap-3">
+            <button class="btn" [disabled]="pending()" (click)="spectate()">Mirar</button>
+            <button class="btn btn-primary" [disabled]="pending()" (click)="rebuy()">
+              Recomprar {{ v.buyIn | money: 'short' }}
+            </button>
+          </div>
         </div>
       </div>
     }
@@ -283,17 +284,36 @@ export class GameTable {
 
   protected readonly idleText = computed(() => {
     const view = this.view();
+    const me = this.me();
+    const deciding = view.players.filter((p) => p.deciding && p.id !== me?.id);
+    if (deciding.length > 0) {
+      return `Esperando a que ${deciding.map((p) => p.nickname).join(' y ')} decida si recompra…`;
+    }
+    if (me?.status === 'eliminated' && !me.deciding) return 'Estás mirando la partida';
     if (view.results) return 'Siguiente mano en un momento…';
-    if (this.me()?.handState === 'folded') return 'Te has retirado de esta mano';
+    if (me?.handState === 'folded') return 'Te has retirado de esta mano';
     const actor = view.players.find((p) => p.id === view.toAct);
     return actor ? `Turno de ${actor.nickname}` : '';
   });
 
-  protected readonly gameOverTitle = computed(() => {
+  /** Segundos que te quedan para decidir si recompras, o null si no tienes que decidir. */
+  protected readonly rebuySecondsLeft = computed(() => {
+    const deadline = this.view().you?.rebuyDeadline;
+    if (deadline == null) return null;
+    return Math.max(0, Math.ceil((this.table.toLocalTime(deadline) - this.clock.now()) / 1000));
+  });
+
+  protected readonly rebuyHint = computed(() => {
     const view = this.view();
-    if (view.winnerId === view.you?.id) return '¡Has ganado la partida!';
-    const winner = view.players.find((p) => p.id === view.winnerId);
-    return winner ? `${winner.nickname} gana la partida` : 'Partida terminada';
+    const { maxPerPlayer } = view.rebuy;
+    const used = this.me()?.rebuys ?? 0;
+    const left =
+      maxPerPlayer === null
+        ? 'Recompras ilimitadas.'
+        : maxPerPlayer - used === 1
+          ? 'Es tu última recompra.'
+          : `Te quedan ${maxPerPlayer - used} recompras.`;
+    return `Vuelve con ${formatMoney(view.buyIn)} en la siguiente mano. ${left} Si no eliges, te quedas mirando.`;
   });
 
   constructor() {
@@ -302,6 +322,10 @@ export class GameTable {
       for (const event of events) {
         if (event.type === 'blindsIncreased') {
           this.showToast(`Suben las ciegas: ${formatMoney(event.sb)} / ${formatMoney(event.bb)}`);
+        }
+        if (event.type === 'playerRebought') {
+          const who = event.playerId === this.me()?.id ? 'Recompras' : `${this.nickname(event.playerId)} recompra`;
+          this.showToast(`${who}: vuelve con ${formatMoney(event.amount)}`);
         }
       }
     });
@@ -334,6 +358,24 @@ export class GameTable {
     const result = await this.table.act(action);
     this.pending.set(false);
     if (!result.ok && result.error !== 'STALE_HAND') this.showToast(errorMessage(result.error));
+  }
+
+  protected async rebuy(): Promise<void> {
+    this.pending.set(true);
+    const result = await this.table.rebuy();
+    this.pending.set(false);
+    if (!result.ok) this.showToast(errorMessage(result.error));
+  }
+
+  protected async spectate(): Promise<void> {
+    this.pending.set(true);
+    const result = await this.table.spectate();
+    this.pending.set(false);
+    if (!result.ok) this.showToast(errorMessage(result.error));
+  }
+
+  private nickname(playerId: string): string {
+    return this.view().players.find((p) => p.id === playerId)?.nickname ?? 'Alguien';
   }
 
   private showToast(message: string): void {

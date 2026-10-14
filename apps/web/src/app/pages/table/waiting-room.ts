@@ -1,7 +1,7 @@
 import { Component, computed, inject, input, signal } from '@angular/core';
 import type { PlayerView } from '@solo-poker/engine';
 import { ClockService } from '../../core/clock.service';
-import { MoneyPipe } from '../../core/format';
+import { MoneyPipe, rebuyRulesLabel } from '../../core/format';
 import { Avatar } from '../../ui/avatar';
 import { recallPassword } from '../../core/storage';
 
@@ -35,6 +35,7 @@ async function copyText(text: string): Promise<boolean> {
       <p class="mt-2 text-muted">
         Entrada {{ view().buyIn | money }} · Ciegas {{ view().blinds.sb | money }} / {{ view().blinds.bb | money }}
       </p>
+      <p class="text-muted">{{ rebuyRules() }}</p>
     </div>
 
     <section class="flex-1">
@@ -91,6 +92,9 @@ export class WaitingRoom {
   readonly countdownAt = input<number | null>(null);
 
   protected readonly copied = signal<CopyTarget | null>(null);
+  protected readonly rebuyRules = computed(() =>
+    rebuyRulesLabel(this.view().rebuy.maxPerPlayer, this.view().rebuy.untilMinutes),
+  );
 
   protected readonly password = computed(() => recallPassword(this.view().tableId));
   protected readonly emptySlots = computed(() =>

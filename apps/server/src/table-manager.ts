@@ -1,4 +1,5 @@
 import type { Rng } from '@solo-poker/engine';
+import { REBUY_DECISION_MS } from '@solo-poker/protocol';
 import { TableRoom, type RoomTimings } from './table-room';
 import { generateTableId, hashPassword } from './security';
 
@@ -24,7 +25,12 @@ export class TableManager {
   }
 
   /** Devuelve null si se ha alcanzado el máximo de mesas. */
-  async create(input: { maxPlayers: number; buyIn: number; password: string }): Promise<TableRoom | null> {
+  async create(input: {
+    maxPlayers: number;
+    buyIn: number;
+    password: string;
+    rebuys: { max: number | null; untilMinutes: number | null };
+  }): Promise<TableRoom | null> {
     if (this.rooms.size >= this.opts.maxTables) return null;
     const passwordHash = await hashPassword(input.password);
 
@@ -36,6 +42,11 @@ export class TableManager {
       passwordHash,
       maxPlayers: input.maxPlayers,
       buyIn: input.buyIn,
+      rebuy: {
+        maxPerPlayer: input.rebuys.max,
+        untilMinutes: input.rebuys.untilMinutes,
+        decisionMs: REBUY_DECISION_MS,
+      },
       timings: this.opts.timings,
       rng: this.opts.rng,
       now: this.opts.now,

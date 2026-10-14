@@ -9,6 +9,7 @@ import {
   type BlindStructure,
   type Card,
   type GameEvent,
+  type RebuyRules,
   type Result,
   type Rng,
   type TableState,
@@ -45,7 +46,7 @@ export function expectOk(result: Result): { state: TableState; events: GameEvent
  */
 export function setupTable(
   n: number,
-  opts: { stacks?: number[]; blindStructure?: BlindStructure } = {},
+  opts: { stacks?: number[]; blindStructure?: BlindStructure; rebuy?: RebuyRules } = {},
 ): TableState {
   let state = createTable({
     id: 'T',
@@ -53,6 +54,7 @@ export function setupTable(
     buyIn: 1000,
     blindStructure: opts.blindStructure ?? DEFAULT_BLINDS,
     turnTimeoutMs: 30_000,
+    rebuy: opts.rebuy,
   });
   for (let i = 0; i < n; i++) {
     state = expectOk(addPlayer(state, { id: `p${i}`, nickname: `P${i}`, avatar: `p:test-${i}` })).state;

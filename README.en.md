@@ -40,6 +40,8 @@ The design is deliberately minimal: black background, thin type and nothing that
 - Full No-Limit Texas Hold'em: blinds, rotating dealer button, minimum raise, all-ins and **side pots** when several players are all-in for different amounts.
 - The fine print is handled too: a short all-in doesn't reopen the betting, heads-up blind rules, uncalled bets are returned and odd chips in split pots go to the right player.
 - Blinds go up every 10 minutes, players are eliminated when they run out of chips, and the last one standing wins.
+- Configurable **rebuys** when creating a table (how many per player and for how many minutes): a busted player chooses between coming back with a new buy-in or watching.
+- **Settle-up summary** at the end: what each player put in, what they finished with and who owes whom, ready to paste into the group chat.
 - 30 seconds per turn: when time runs out the player checks if possible, otherwise folds.
 
 **The table**
@@ -134,7 +136,6 @@ fly deploy --ha=false
 
 ## Coming soon
 
-- [ ] Rebuys when you run out of chips
 - [ ] Choose how fast blinds go up when creating a table
 - [ ] Custom icons
 - [ ] Hand history
@@ -150,12 +151,13 @@ Every client message is sent as `(payload, ack)` and the server always answers t
 
 | Client → server | Response |
 |---|---|
-| `table:create` `{ nickname, avatar, password, maxPlayers, buyIn }` | `{ tableId, playerId, token }` |
+| `table:create` `{ nickname, avatar, password, maxPlayers, buyIn, rebuys }` | `{ tableId, playerId, token }` |
 | `table:info` `{ tableId }` | `{ table }`, for the link landing page |
 | `table:join` `{ tableId, password, nickname, avatar }` | `{ tableId, playerId, token }` |
 | `table:rejoin` `{ tableId, token }` | `{ tableId, playerId, token }` |
 | `table:leave` `{}` | `{}` |
 | `game:action` `{ handNumber, action }` | `{}` |
+| `game:rebuy` / `game:spectate` `{}` | `{}`, after running out of chips |
 
 Server to client: `table:view` (the player's full view after every change), `game:events` (what just happened, for animations and sounds), `table:countdown` and `session:replaced`.
 

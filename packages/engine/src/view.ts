@@ -1,4 +1,4 @@
-import { currentBlindLevel, getLegalActions } from './engine';
+import { currentBlindLevel, getLegalActions, rebuyClosesAt } from './engine';
 import { evaluateHand } from './evaluator';
 import type { PlayerId, PlayerView, TableState } from './types';
 
@@ -37,6 +37,13 @@ export function getPlayerView(state: TableState, playerId: PlayerId | null): Pla
           }
         : null,
     },
+    rebuy: {
+      maxPerPlayer: state.config.rebuy.maxPerPlayer,
+      untilMinutes: state.config.rebuy.untilMinutes,
+      closesAt: rebuyClosesAt(state),
+    },
+    startedAt: state.startedAt,
+    finishedAt: state.finishedAt,
     players: state.players.map((p) => {
       const seat = hand?.seats[p.id];
       const showCards = hand?.revealed && seat && seat.state !== 'folded';
@@ -48,6 +55,8 @@ export function getPlayerView(state: TableState, playerId: PlayerId | null): Pla
         stack: p.stack,
         status: p.status,
         connected: p.connected,
+        rebuys: p.rebuys,
+        deciding: p.rebuyDeadline !== null,
         handState: seat?.state ?? null,
         betThisStreet: seat?.betThisStreet ?? 0,
         lastAction: seat?.lastAction ?? null,
@@ -69,6 +78,7 @@ export function getPlayerView(state: TableState, playerId: PlayerId | null): Pla
           holeCards: myCards,
           handCategory: myCards ? evaluateHand([...myCards, ...hand!.board]).category : null,
           legal: getLegalActions(state, me.id),
+          rebuyDeadline: me.rebuyDeadline,
         }
       : null,
   };

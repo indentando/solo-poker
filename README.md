@@ -38,6 +38,8 @@ El diseño es deliberadamente minimalista: fondo negro, tipografía fina y nada 
 - Texas Hold'em No-Limit completo: ciegas, botón rotatorio, subida mínima, all-in y **botes paralelos** (side pots) cuando varios jugadores van all-in con cantidades distintas.
 - Reglas finas: un all-in corto no reabre la apuesta, la regla especial de ciegas del heads-up, devolución de lo que nadie iguala y reparto del céntimo sobrante en los empates.
 - Ciegas que suben cada 10 minutos, eliminación al quedarse sin fichas y fin de partida con ganador.
+- **Recompras** configurables al crear la mesa (cuántas por jugador y durante cuántos minutos): quien se queda sin fichas elige entre volver con una entrada nueva o quedarse mirando.
+- **Resumen de cuentas** al acabar: lo que puso cada uno, con cuánto acaba y quién tiene que pagar a quién, listo para copiar al grupo.
 - 30 segundos por turno: si se agota, el jugador pasa si puede y si no se retira.
 
 **La mesa**
@@ -133,7 +135,6 @@ fly deploy --ha=false
 
 ## Próximamente
 
-- [ ] Recompras (rebuy) al quedarse sin fichas
 - [ ] Elegir la velocidad de subida de las ciegas al crear la mesa
 - [ ] Iconos personalizados
 - [ ] Historial de manos
@@ -149,12 +150,13 @@ Todos los mensajes del cliente se envían como `(payload, ack)` y el servidor re
 
 | Cliente → servidor | Respuesta |
 |---|---|
-| `table:create` `{ nickname, avatar, password, maxPlayers, buyIn }` | `{ tableId, playerId, token }` |
+| `table:create` `{ nickname, avatar, password, maxPlayers, buyIn, rebuys }` | `{ tableId, playerId, token }` |
 | `table:info` `{ tableId }` | `{ table }`, para la página del enlace |
 | `table:join` `{ tableId, password, nickname, avatar }` | `{ tableId, playerId, token }` |
 | `table:rejoin` `{ tableId, token }` | `{ tableId, playerId, token }` |
 | `table:leave` `{}` | `{}` |
 | `game:action` `{ handNumber, action }` | `{}` |
+| `game:rebuy` / `game:spectate` `{}` | `{}`, tras quedarte sin fichas |
 
 Del servidor al cliente: `table:view` (vista completa del jugador tras cada cambio), `game:events` (lo que acaba de pasar, para animar y sonar), `table:countdown` y `session:replaced`.
 

@@ -252,7 +252,7 @@ describe('showdown', () => {
     s = act(s, { type: 'raise', to: 1000 });
     const { state, events } = actWithEvents(s, { type: 'call' });
 
-    expect(events).toContainEqual({ type: 'playerEliminated', playerId: 'p1' });
+    expect(events).toContainEqual({ type: 'playerEliminated', playerId: 'p1', canRebuy: false });
     expect(events).toContainEqual({ type: 'gameOver', winnerId: 'p0' });
     expect(state.status).toBe('finished');
     expect(stacks(state)).toEqual([1050, 0]);
@@ -268,10 +268,11 @@ describe('abandonos', () => {
 
     s = expectOk(removePlayer(s, 'p0', 0)).state; // era su turno
     // Solo queda p1: gana el bote (sus 5 + los 10 de p2) y la partida.
+    // Quienes abandonan conservan lo que tenían: es lo que se llevan al saldar cuentas.
     expect(s.hand!.results).toEqual([{ amount: 15, winners: ['p1'], category: null }]);
     expect(s.status).toBe('finished');
     expect(s.winnerId).toBe('p1');
-    expect(stacks(s)).toEqual([0, 1010, 0]);
+    expect(stacks(s)).toEqual([1000, 1010, 990]);
   });
 });
 

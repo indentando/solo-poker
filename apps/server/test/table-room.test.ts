@@ -1,4 +1,4 @@
-import type { GameEvent, PlayerView } from '@solo-poker/engine';
+import type { GameEvent, PlayerView, RebuyRules, Rng } from '@solo-poker/engine';
 import type { Session } from '@solo-poker/protocol';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TableRoom, type Connection, type RoomTimings } from '../src/table-room';
@@ -34,14 +34,17 @@ class FakeConnection implements Connection {
   }
 }
 
-function createRoom(maxPlayers = 2) {
+const NO_REBUYS: RebuyRules = { maxPerPlayer: 0, untilMinutes: null, decisionMs: 20_000 };
+
+function createRoom(maxPlayers = 2, rebuy: RebuyRules = NO_REBUYS, rng: Rng = () => 0) {
   return new TableRoom({
     id: 'ABC-DEF',
     passwordHash: 'unused',
     maxPlayers,
     buyIn: 1000,
+    rebuy,
     timings: TIMINGS,
-    rng: () => 0, // el botón empieza en el primer jugador
+    rng, // por defecto () => 0: el botón empieza en el primer jugador
     now: () => Date.now(),
   });
 }
@@ -53,8 +56,8 @@ function joinOk(room: TableRoom, connection: Connection, nickname: string): Sess
 }
 
 /** Mesa de 2 llena y con la primera mano repartida. */
-function startedRoom() {
-  const room = createRoom();
+function startedRoom(rebuy: RebuyRules = NO_REBUYS, rng?: Rng) {
+  const room = createRoom(2, rebuy, rng);
   const a = new FakeConnection();
   const b = new FakeConnection();
   const ana = joinOk(room, a, 'Ana');
@@ -174,5 +177,66 @@ describe('TableRoom', () => {
     expect(room.canBeDeleted(Date.now())).toBe(true);
     joinOk(room, new FakeConnection(), 'Ana');
     expect(room.canBeDeleted(Date.now())).toBe(false);
+  });
+});
+
+/** Barajado pseudoaleatorio determinista: con la semilla 1, el all-in de la primera mano no acaba en empate. */
+function lcg(seed: number): Rng {
+  let x = seed;
+  return (n) => {
+    x = (x * 1103515245 + 12345) % 2147483648;
+    return x % n;
+  };
+}
+
+describe('TableRoom: recompras', () => {
+  const REBUYS: RebuyRules = { maxPerPlayer: 1, untilMinutes: null, decisionMs: 20_000 };
+
+  /** Los dos van all-in en la primera mano; devuelve quién se queda sin fichas. */
+  function allIn(room: TableRoom) {
+    while (room.snapshot.hand && !room.snapshot.hand.finished) {
+      const id = room.snapshot.hand.toAct!;
+      const handNumber = room.snapshot.hand.number;
+      const ok =
+        room.act(id, handNumber, { type: 'raise', to: 1000 }).ok || room.act(id, handNumber, { type: 'call' }).ok;
+      expect(ok).toBe(true);
+    }
+    const loser = room.snapshot.players.find((p) => p.stack === 0);
+    if (!loser) throw new Error('La mano acabó en empate: cambia el reparto del test');
+    return loser.id;
+  }
+
+  it('espera a que el eliminado decida y, si se le acaba el plazo, termina la partida', () => {
+    const { room, a } = startedRoom(REBUYS, lcg(1));
+    const loserId = allIn(room);
+
+    expect(room.snapshot.status).toBe('playing');
+    expect(room.snapshot.players.find((p) => p.id === loserId)!.rebuyDeadline).not.toBeNull();
+    // No se reparte otra mano mientras decide.
+    vi.advanceTimersByTime(TIMINGS.handPauseMs * 3);
+    expect(room.snapshot.handNumber).toBe(1);
+
+    vi.advanceTimersByTime(REBUYS.decisionMs);
+    expect(room.snapshot.status).toBe('finished');
+    expect(a.events).toContainEqual({ type: 'rebuyDeclined', playerId: loserId });
+  });
+
+  it('quien recompra vuelve y se reparte la siguiente mano', () => {
+    const { room, a } = startedRoom(REBUYS, lcg(1));
+    const loserId = allIn(room);
+
+    expect(room.rebuy(loserId).ok).toBe(true);
+    expect(a.events).toContainEqual({ type: 'playerRebought', playerId: loserId, amount: 1000, rebuys: 1 });
+
+    vi.advanceTimersByTime(TIMINGS.handPauseMs);
+    expect(room.snapshot.handNumber).toBe(2);
+    expect(room.snapshot.hand!.order).toContain(loserId);
+  });
+
+  it('quedarse mirando termina la partida si no quedan rivales', () => {
+    const { room, a } = startedRoom(REBUYS, lcg(1));
+    const loserId = allIn(room);
+    expect(room.spectate(loserId).ok).toBe(true);
+    expect(room.snapshot.status).toBe('finished');
   });
 });

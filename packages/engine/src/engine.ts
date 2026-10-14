@@ -13,6 +13,7 @@ import type {
   LegalActions,
   Player,
   PlayerId,
+  RebuyRules,
   Result,
   Rng,
   TableConfig,
@@ -98,9 +99,13 @@ function post(state: TableState, id: PlayerId, amount: Cents, countsForStreet: b
 
 // ─── Mesa y jugadores ───────────────────────────────────────────
 
-export function createTable(config: TableConfig): TableState {
+export const NO_REBUYS: RebuyRules = { maxPerPlayer: 0, untilMinutes: null, decisionMs: 20_000 };
+
+export type TableConfigInput = Omit<TableConfig, 'rebuy'> & { rebuy?: RebuyRules };
+
+export function createTable(config: TableConfigInput): TableState {
   return {
-    config,
+    config: { ...config, rebuy: config.rebuy ?? NO_REBUYS },
     status: 'waiting',
     players: [],
     buttonSeat: -1,
@@ -109,7 +114,25 @@ export function createTable(config: TableConfig): TableState {
     handNumber: 0,
     hand: null,
     winnerId: null,
+    startedAt: null,
+    finishedAt: null,
   };
+}
+
+/** Hora a la que se cierran las recompras, o null si están abiertas toda la partida. */
+export function rebuyClosesAt(state: TableState): number | null {
+  const { untilMinutes } = state.config.rebuy;
+  if (untilMinutes === null || state.startedAt === null) return null;
+  return state.startedAt + untilMinutes * 60_000;
+}
+
+/** ¿Puede este jugador recomprar ahora mismo (según el número de recompras y la ventana de tiempo)? */
+function rebuyAvailable(state: TableState, player: Player, now: number): boolean {
+  const { maxPerPlayer } = state.config.rebuy;
+  if (state.status !== 'playing' || maxPerPlayer === 0) return false;
+  if (maxPerPlayer !== null && player.rebuys >= maxPerPlayer) return false;
+  const closesAt = rebuyClosesAt(state);
+  return closesAt === null || now < closesAt;
 }
 
 export function addPlayer(
@@ -141,6 +164,8 @@ export function addPlayer(
     stack: next.config.buyIn,
     status: 'active',
     connected: true,
+    rebuys: 0,
+    rebuyDeadline: null,
   });
   next.players.sort((a, b) => a.seat - b.seat);
   return ok(next, [{ type: 'playerJoined', playerId: input.id, nickname, avatar: input.avatar, seat }]);
@@ -156,7 +181,8 @@ export function setConnected(state: TableState, playerId: PlayerId, connected: b
 /**
  * Un jugador abandona. En la sala de espera libera su asiento; con la partida
  * empezada queda eliminado: si está en una mano se retira y lo que ya puso en
- * el bote se queda allí. El resto de su stack sale de la partida.
+ * el bote se queda allí. Las fichas que le quedan salen de la mesa con él:
+ * al saldar cuentas cuentan como lo que se lleva.
  */
 export function removePlayer(state: TableState, playerId: PlayerId, now: number): Result {
   if (!findPlayer(state, playerId)) return fail('PLAYER_NOT_FOUND');
@@ -169,11 +195,18 @@ export function removePlayer(state: TableState, playerId: PlayerId, now: number)
   }
 
   const player = mustPlayer(next, playerId);
-  if (next.status === 'finished' || player.status === 'eliminated') return ok(next);
+  if (next.status === 'finished') return ok(next);
+  if (player.status === 'eliminated') {
+    // Si se va mientras decidía si recomprar, cuenta como que no recompra.
+    if (player.rebuyDeadline === null) return ok(next);
+    player.rebuyDeadline = null;
+    events.push({ type: 'playerLeft', playerId }, { type: 'rebuyDeclined', playerId });
+    checkGameOver(next, events, now);
+    return ok(next, events);
+  }
 
   player.status = 'eliminated';
-  player.stack = 0;
-  events.push({ type: 'playerLeft', playerId }, { type: 'playerEliminated', playerId });
+  events.push({ type: 'playerLeft', playerId }, { type: 'playerEliminated', playerId, canRebuy: false });
 
   const hand = next.hand;
   const seat = hand?.seats[playerId];
@@ -185,7 +218,39 @@ export function removePlayer(state: TableState, playerId: PlayerId, now: number)
     else advance(next, events, now, hand.toAct!, true);
   }
 
-  checkGameOver(next, events);
+  checkGameOver(next, events, now);
+  return ok(next, events);
+}
+
+// ─── Recompras ──────────────────────────────────────────────────
+
+/** El jugador eliminado vuelve a la mesa con una entrada nueva. Entra en la siguiente mano. */
+export function rebuy(state: TableState, playerId: PlayerId, now: number): Result {
+  const player = findPlayer(state, playerId);
+  if (!player) return fail('PLAYER_NOT_FOUND');
+  if (state.status !== 'playing') return fail('GAME_NOT_PLAYING');
+  // Solo mientras está decidiendo: el plazo se concede al quedarse sin fichas, si las reglas lo permitían.
+  if (player.status !== 'eliminated' || player.rebuyDeadline === null) return fail('REBUY_NOT_ALLOWED');
+
+  const next = clone(state);
+  const p = mustPlayer(next, playerId);
+  p.stack = next.config.buyIn;
+  p.status = 'active';
+  p.rebuys++;
+  p.rebuyDeadline = null;
+  return ok(next, [{ type: 'playerRebought', playerId, amount: next.config.buyIn, rebuys: p.rebuys }]);
+}
+
+/** El jugador decide no recomprar (o se le acaba el plazo): se queda mirando. */
+export function declineRebuy(state: TableState, playerId: PlayerId, now: number): Result {
+  const player = findPlayer(state, playerId);
+  if (!player) return fail('PLAYER_NOT_FOUND');
+  if (player.rebuyDeadline === null) return fail('REBUY_NOT_ALLOWED');
+
+  const next = clone(state);
+  mustPlayer(next, playerId).rebuyDeadline = null;
+  const events: Events = [{ type: 'rebuyDeclined', playerId }];
+  checkGameOver(next, events, now);
   return ok(next, events);
 }
 
@@ -197,6 +262,7 @@ export function startGame(state: TableState, rng: Rng, now: number): Result {
 
   const next = clone(state);
   next.status = 'playing';
+  next.startedAt = now;
   next.buttonSeat = next.players[rng(next.players.length)]!.seat;
   next.levelStartedAt = next.config.blindStructure.increaseEvery.type === 'minutes' ? now : 0;
   return ok(next, [{ type: 'gameStarted', buttonSeat: next.buttonSeat }]);
@@ -219,6 +285,8 @@ export interface StartHandOptions {
 export function startHand(state: TableState, opts: StartHandOptions): Result {
   if (state.status !== 'playing') return fail('GAME_NOT_PLAYING');
   if (state.hand && !state.hand.finished) return fail('HAND_IN_PROGRESS');
+  // Si alguien está decidiendo si recompra, se le espera: podría volver en esta mano.
+  if (state.players.some((p) => p.rebuyDeadline !== null)) return fail('WAITING_FOR_REBUY');
 
   const next = clone(state);
   const events: Events = [];
@@ -407,7 +475,7 @@ export function handleTimeout(state: TableState, now: number): Result {
 function advance(state: TableState, events: Events, now: number, fromId: PlayerId, inclusive = false): void {
   const hand = state.hand!;
   const live = hand.order.filter((id) => seatOf(hand, id).state !== 'folded');
-  if (live.length === 1) return finishByFold(state, events);
+  if (live.length === 1) return finishByFold(state, events, now);
 
   const canAct = hand.order.filter((id) => seatOf(hand, id).state === 'active');
   // Si solo uno puede apostar y ya iguala lo máximo, no hay nadie contra quien apostar.
@@ -429,7 +497,7 @@ function closeRound(state: TableState, events: Events, now: number): void {
   hand.turnDeadline = null;
 
   for (;;) {
-    if (hand.street === 'river') return showdown(state, events);
+    if (hand.street === 'river') return showdown(state, events, now);
 
     const canAct = hand.order.filter((id) => seatOf(hand, id).state === 'active');
     if (canAct.length <= 1) {
@@ -497,7 +565,7 @@ function reveal(state: TableState, events: Events): void {
   events.push({ type: 'showdown', reveals });
 }
 
-function finishByFold(state: TableState, events: Events): void {
+function finishByFold(state: TableState, events: Events, now: number): void {
   const hand = state.hand!;
   refundUncalled(state, events);
   const winner = hand.order.find((id) => seatOf(hand, id).state !== 'folded')!;
@@ -507,10 +575,10 @@ function finishByFold(state: TableState, events: Events): void {
   const result = { amount, winners: [winner], category: null };
   hand.results.push(result);
   events.push({ type: 'potAwarded', ...result });
-  endHand(state, events);
+  endHand(state, events, now);
 }
 
-function showdown(state: TableState, events: Events): void {
+function showdown(state: TableState, events: Events, now: number): void {
   const hand = state.hand!;
   hand.street = 'showdown';
   if (!hand.revealed) reveal(state, events);
@@ -546,10 +614,10 @@ function showdown(state: TableState, events: Events): void {
     events.push({ type: 'potAwarded', ...result });
   }
 
-  endHand(state, events);
+  endHand(state, events, now);
 }
 
-function endHand(state: TableState, events: Events): void {
+function endHand(state: TableState, events: Events, now: number): void {
   const hand = state.hand!;
   hand.finished = true;
   hand.toAct = null;
@@ -558,19 +626,25 @@ function endHand(state: TableState, events: Events): void {
   for (const player of state.players) {
     if (player.status === 'active' && player.stack === 0) {
       player.status = 'eliminated';
-      events.push({ type: 'playerEliminated', playerId: player.id });
+      // Si las reglas lo permiten, tiene un plazo para decidir si recompra.
+      const canRebuy = rebuyAvailable(state, player, now);
+      player.rebuyDeadline = canRebuy ? now + state.config.rebuy.decisionMs : null;
+      events.push({ type: 'playerEliminated', playerId: player.id, canRebuy });
     }
   }
-  checkGameOver(state, events);
+  checkGameOver(state, events, now);
 }
 
-function checkGameOver(state: TableState, events: Events): void {
+function checkGameOver(state: TableState, events: Events, now: number): void {
   if (state.status !== 'playing') return;
   if (state.hand && !state.hand.finished) return;
+  // Alguien que puede recomprar todavía puede volver: la partida no ha terminado.
+  if (state.players.some((p) => p.rebuyDeadline !== null)) return;
 
   const alive = alivePlayers(state);
   if (alive.length <= 1) {
     state.status = 'finished';
+    state.finishedAt = now;
     state.winnerId = alive[0]?.id ?? null;
     events.push({ type: 'gameOver', winnerId: state.winnerId });
   }

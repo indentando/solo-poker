@@ -34,6 +34,19 @@ export class MoneyPipe implements PipeTransform {
   }
 }
 
+// ─── Recompras ──────────────────────────────────────────────────
+
+export function minutesLabel(minutes: number): string {
+  return minutes < 60 || minutes % 60 !== 0 ? `${minutes} min` : `${minutes / 60} h`;
+}
+
+/** "Sin recompras", "1 recompra · durante 1 h", "Recompras ilimitadas · toda la partida"… */
+export function rebuyRulesLabel(max: number | null, untilMinutes: number | null): string {
+  if (max === 0) return 'Sin recompras';
+  const count = max === null ? 'Recompras ilimitadas' : `${max} ${max === 1 ? 'recompra' : 'recompras'}`;
+  return `${count} · ${untilMinutes === null ? 'toda la partida' : `durante ${minutesLabel(untilMinutes)}`}`;
+}
+
 // ─── Jerga de póker (en inglés) ─────────────────────────────────
 
 export const HAND_LABELS: Record<HandCategory, string> = {
@@ -84,6 +97,8 @@ const ERROR_MESSAGES: Record<ClientError, string> = {
   NOT_YOUR_TURN: 'No es tu turno.',
   ILLEGAL_ACTION: 'Esa acción no está permitida ahora.',
   INVALID_AMOUNT: 'Cantidad no válida.',
+  REBUY_NOT_ALLOWED: 'Ya no puedes recomprar.',
+  WAITING_FOR_REBUY: 'Esperando a que un jugador decida si recompra.',
 };
 
 export const errorMessage = (error: ClientError): string => ERROR_MESSAGES[error];

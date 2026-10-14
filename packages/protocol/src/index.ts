@@ -34,7 +34,13 @@ export const LIMITS = {
   minPassword: 4,
   maxPassword: 64,
   maxNickname: 20,
+  maxRebuys: 20,
+  minRebuyMinutes: 5,
+  maxRebuyMinutes: 600,
 } as const;
+
+/** Tiempo que tiene un jugador para decidir si recompra tras quedarse sin fichas. */
+export const REBUY_DECISION_MS = 20_000;
 
 // ─── Payloads ───────────────────────────────────────────────────
 
@@ -45,6 +51,12 @@ export interface CreateTablePayload {
   password: string;
   maxPlayers: number;
   buyIn: Cents;
+  rebuys: {
+    /** Recompras por jugador: 0 = ninguna, null = ilimitadas. */
+    max: number | null;
+    /** Minutos desde el inicio durante los que se puede recomprar: null = toda la partida. */
+    untilMinutes: number | null;
+  };
 }
 
 export interface TableInfoPayload {
@@ -113,6 +125,10 @@ export interface ClientToServerEvents {
   'table:rejoin': Handler<RejoinTablePayload, Session>;
   'table:leave': Handler<Record<string, never>>;
   'game:action': Handler<GameActionPayload>;
+  /** Tras quedarte sin fichas: volver con una entrada nueva. */
+  'game:rebuy': Handler<Record<string, never>>;
+  /** Tras quedarte sin fichas: no recomprar y quedarte mirando. */
+  'game:spectate': Handler<Record<string, never>>;
 }
 
 export interface ServerToClientEvents {

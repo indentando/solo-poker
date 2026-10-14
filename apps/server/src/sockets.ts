@@ -4,6 +4,7 @@ import {
   gameActionSchema,
   joinTableSchema,
   leaveTableSchema,
+  rebuyDecisionSchema,
   rejoinTableSchema,
   tableInfoSchema,
 } from '@solo-poker/protocol/schemas';
@@ -114,6 +115,16 @@ function handleConnection(socket: PokerSocket, { manager, createLimiter, joinLim
   on('game:action', gameActionSchema, ({ handNumber, action }) => {
     if (!session) return fail('NOT_IN_TABLE');
     return session.room.act(session.playerId, handNumber, action);
+  });
+
+  on('game:rebuy', rebuyDecisionSchema, () => {
+    if (!session) return fail('NOT_IN_TABLE');
+    return session.room.rebuy(session.playerId);
+  });
+
+  on('game:spectate', rebuyDecisionSchema, () => {
+    if (!session) return fail('NOT_IN_TABLE');
+    return session.room.spectate(session.playerId);
   });
 
   socket.on('disconnect', () => {

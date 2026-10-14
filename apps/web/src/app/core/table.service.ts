@@ -102,6 +102,16 @@ export class TableService {
     return this.sockets.request('game:action', { handNumber: view?.handNumber ?? 0, action });
   }
 
+  /** Tras quedarte sin fichas: vuelves con una entrada nueva en la siguiente mano. */
+  rebuy() {
+    return this.sockets.request('game:rebuy', {});
+  }
+
+  /** Tras quedarte sin fichas: no recompras y te quedas mirando. */
+  spectate() {
+    return this.sockets.request('game:spectate', {});
+  }
+
   /** Recupera la sesión que se abrió en otro sitio (y la cierra allí). */
   takeOver(): void {
     this.replaced.set(false);
