@@ -8,13 +8,14 @@ import { TableService } from '../../core/table.service';
   selector: 'app-home-page',
   imports: [FormsModule, RouterLink],
   template: `
-    <main class="page justify-between gap-10">
-      <header class="pt-20">
-        <h1 class="text-6xl font-extralight leading-[0.95] tracking-tight">Solo<br />Poker</h1>
-        <p class="mt-3 text-lg font-light text-muted">Póker con amigos, sin registros.</p>
+    <!-- En el móvil, una columna; en el ordenador, título a la izquierda y acciones a la derecha, centrado. -->
+    <main class="page justify-between gap-10 lg:max-w-4xl lg:flex-row lg:items-center lg:justify-center lg:gap-24">
+      <header class="pt-20 lg:flex-1 lg:pt-0">
+        <h1 class="text-6xl font-extralight leading-[0.95] tracking-tight lg:text-8xl">Solo<br />Poker</h1>
+        <p class="mt-3 text-lg font-light text-muted lg:mt-5 lg:text-xl">Póker con amigos, sin registros.</p>
       </header>
 
-      <div class="flex flex-col gap-6 pb-10">
+      <div class="flex flex-col gap-6 pb-10 lg:w-96 lg:shrink-0 lg:pb-0">
         @if (activeTable(); as tableId) {
           <section class="rounded-3xl bg-surface p-5" animate.enter="fade-enter">
             <p class="text-sm text-muted">Estás sentado en la mesa</p>
