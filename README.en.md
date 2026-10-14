@@ -11,6 +11,8 @@ Create a table, share the link and the game starts as soon as everyone is seated
 ![Angular](https://img.shields.io/badge/Angular-22-dd0031?logo=angular&logoColor=white)
 ![Node](https://img.shields.io/badge/Node-22-5fa04e?logo=nodedotjs&logoColor=white)
 
+**[▶ Play at solo-poker.app](https://solo-poker.app)**
+
 [Español](README.md) · **English**
 
 <img src="docs/screenshots/game-desktop.png" alt="Solo Poker on desktop: opponents around an oval table, the flop on the board and Fold, Check and Bet buttons" width="100%">
@@ -132,7 +134,6 @@ fly deploy --ha=false
 
 ## Coming soon
 
-- [ ] Deployment at [solo-poker.app](https://solo-poker.app)
 - [ ] Rebuys when you run out of chips
 - [ ] Choose how fast blinds go up when creating a table
 - [ ] Custom icons

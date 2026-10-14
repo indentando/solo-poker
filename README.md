@@ -11,6 +11,8 @@ Crea una mesa, comparte el enlace y la partida empieza en cuanto se sientan todo
 ![Angular](https://img.shields.io/badge/Angular-22-dd0031?logo=angular&logoColor=white)
 ![Node](https://img.shields.io/badge/Node-22-5fa04e?logo=nodedotjs&logoColor=white)
 
+**[▶ Jugar en solo-poker.app](https://solo-poker.app)**
+
 **Español** · [English](README.en.md)
 
 <img src="docs/screenshots/game-desktop.png" alt="Mesa de Solo Poker en escritorio: rivales alrededor de una mesa ovalada, flop sobre la mesa y botones Fold, Check y Bet" width="100%">
@@ -131,7 +133,6 @@ fly deploy --ha=false
 
 ## Próximamente
 
-- [ ] Despliegue en [solo-poker.app](https://solo-poker.app)
 - [ ] Recompras (rebuy) al quedarse sin fichas
 - [ ] Elegir la velocidad de subida de las ciegas al crear la mesa
 - [ ] Iconos personalizados
