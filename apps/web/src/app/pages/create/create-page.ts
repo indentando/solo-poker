@@ -15,7 +15,7 @@ const BUY_IN_PRESETS = [500, 1000, 2000, 5000];
 const REBUY_OPTIONS: (number | null)[] = [0, 1, 2, 3, 5, 10, null];
 /** Minutos durante los que se puede recomprar. null = toda la partida. */
 const MINUTE_OPTIONS: (number | null)[] = [15, 30, 45, 60, 90, 120, 180, null];
-const DEFAULT_REBUYS = 1;
+const DEFAULT_REBUYS = 0;
 const DEFAULT_MINUTES = 60;
 
 @Component({
