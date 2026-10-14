@@ -6,3 +6,6 @@ coverage/
 !.env.example
 *.log
 .DS_Store
+
+# Configuración local de la app de Claude (servidores de prueba)
+.claude/launch.json
