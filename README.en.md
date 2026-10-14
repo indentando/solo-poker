@@ -53,6 +53,11 @@ The design is deliberately minimal: black background, thin type and nothing that
 
 **Design**
 - Mobile-first, with a horizontal layout on large screens.
+- App icon and card backs feature the "SP" chip.
+
+<div align="center">
+<img src="docs/screenshots/home-desktop.png" alt="Home on desktop: the title on the left and create or join a table on the right" width="100%">
+</div>
 
 <div align="center">
 <img src="docs/screenshots/showdown-desktop.png" alt="Showdown: every player's cards revealed and the pot winner" width="100%">

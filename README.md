@@ -51,6 +51,11 @@ El diseño es deliberadamente minimalista: fondo negro, tipografía fina y nada 
 
 **Diseño**
 - Mobile-first, con vista horizontal en pantallas grandes.
+- Icono y trasera de las cartas con la ficha "SP".
+
+<div align="center">
+<img src="docs/screenshots/home-desktop.png" alt="Inicio en el ordenador: el título a la izquierda y crear mesa o unirse a la derecha" width="100%">
+</div>
 - Jerga de póker en inglés para las acciones (*Fold, Check, Call, Raise, All-in*) e interfaz en español.
 
 <div align="center">
