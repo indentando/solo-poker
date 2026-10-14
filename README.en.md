@@ -121,7 +121,7 @@ Open `http://localhost:4200`, create a table and share the link. The server list
 
 ## Deployment
 
-In production, a single Node process serves both the compiled web app and Socket.IO from the same origin. The image is built from the [`Dockerfile`](Dockerfile) and deployed to [Fly.io](https://fly.io) with [`fly.toml`](fly.toml): one small, always-on machine in Madrid, because tables live in memory.
+In production, a single Node process serves both the compiled web app and Socket.IO from the same origin. The image is built from the [`Dockerfile`](Dockerfile) and deployed to [Fly.io](https://fly.io) with [`fly.toml`](fly.toml): one small, always-on machine in Paris, because tables live in memory.
 
 ```bash
 fly apps create solo-poker

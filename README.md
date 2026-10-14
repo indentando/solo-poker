@@ -120,7 +120,7 @@ Abre `http://localhost:4200`, crea una mesa y comparte el enlace. El servidor es
 
 ## Despliegue
 
-En producción, un único proceso de Node sirve la web compilada y el Socket.IO desde el mismo origen. La imagen se construye con el [`Dockerfile`](Dockerfile) y se despliega en [Fly.io](https://fly.io) con [`fly.toml`](fly.toml): una sola máquina pequeña en Madrid, siempre encendida, porque las mesas viven en memoria.
+En producción, un único proceso de Node sirve la web compilada y el Socket.IO desde el mismo origen. La imagen se construye con el [`Dockerfile`](Dockerfile) y se despliega en [Fly.io](https://fly.io) con [`fly.toml`](fly.toml): una sola máquina pequeña en París, siempre encendida, porque las mesas viven en memoria.
 
 ```bash
 fly apps create solo-poker

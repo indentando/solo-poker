@@ -4,7 +4,7 @@
 # encendida: si se apaga o hay dos, las partidas se pierden o se reparten.
 
 app = "solo-poker"
-primary_region = "mad"
+primary_region = "cdg"
 kill_signal = "SIGTERM"
 kill_timeout = "10s"
 
