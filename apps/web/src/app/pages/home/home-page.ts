@@ -9,9 +9,11 @@ import { TableService } from '../../core/table.service';
   imports: [FormsModule, RouterLink],
   template: `
     <!-- En el móvil, una columna; en el ordenador, título a la izquierda y acciones a la derecha, centrado. -->
-    <main class="page justify-between gap-10 lg:max-w-4xl lg:flex-row lg:items-center lg:justify-center lg:gap-24">
+    <main class="page justify-between gap-10 lg:max-w-5xl lg:flex-row lg:items-center lg:justify-center lg:gap-24">
       <header class="pt-20 lg:flex-1 lg:pt-0">
-        <h1 class="text-6xl font-extralight leading-[0.95] tracking-tight lg:text-8xl">Solo<br />Poker</h1>
+        <h1 class="whitespace-nowrap text-6xl font-extralight leading-[0.95] tracking-tight lg:text-8xl">
+          Solo <span class="text-suit-red">Poker</span>
+        </h1>
         <p class="mt-3 text-lg font-light text-muted lg:mt-5 lg:text-xl">Póker con amigos, sin registros.</p>
       </header>
 
