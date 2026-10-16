@@ -40,6 +40,7 @@ El diseño es deliberadamente minimalista: fondo negro, tipografía fina y nada 
 - Ciegas que suben cada 10 minutos, eliminación al quedarse sin fichas y fin de partida con ganador.
 - **Recompras** configurables al crear la mesa (cuántas por jugador y durante cuántos minutos): quien se queda sin fichas elige entre volver con una entrada nueva o quedarse mirando.
 - **Resumen de cuentas** al acabar: lo que puso cada uno, con cuánto acaba y quién tiene que pagar a quién, listo para copiar al grupo.
+- **Historial** de jugadas en el ordenador: una columna discreta a la derecha de la mesa que se difumina al subir.
 - 30 segundos por turno: si se agota, el jugador pasa si puede y si no se retira.
 
 **La mesa**

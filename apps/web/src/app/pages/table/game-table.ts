@@ -10,6 +10,7 @@ import { BackIcon } from '../../ui/back-icon';
 import { PlayingCard } from '../../ui/playing-card';
 import { Seat } from '../../ui/seat';
 import { ActionBar } from './action-bar';
+import { HandLog } from './hand-log';
 
 const TOAST_MS = 3_000;
 const BOARD_SIZE = 5;
@@ -19,7 +20,7 @@ const TIME_WARNING_MS = 5_000;
 /** La mesa durante la partida: rivales arriba, tablero en el centro y tu mano abajo. */
 @Component({
   selector: 'app-game-table',
-  imports: [MoneyPipe, PlayingCard, Seat, ActionBar, BackIcon, Avatar],
+  imports: [MoneyPipe, PlayingCard, Seat, ActionBar, BackIcon, Avatar, HandLog],
   template: `
     @let v = view();
     <header class="flex h-14 items-center justify-between">
@@ -50,6 +51,8 @@ const TIME_WARNING_MS = 5_000;
     -->
     <div class="arena flex flex-1 flex-col">
       <div class="felt" aria-hidden="true"></div>
+      <!-- Historial de la partida, a la derecha de la mesa (solo escritorio). -->
+      <app-hand-log class="log" />
 
       <!-- Rivales, empezando por el que se sienta a tu izquierda. -->
       <section class="opponents grid grid-cols-5 gap-x-1 gap-y-3 pt-4">
@@ -150,7 +153,8 @@ const TIME_WARNING_MS = 5_000;
     }
   `,
   styles: `
-    .felt {
+    .felt,
+    .log {
       display: none;
     }
 
@@ -161,6 +165,16 @@ const TIME_WARNING_MS = 5_000;
         flex: none;
         height: min(58vh, 34rem);
         margin-block: 3rem 2.5rem;
+        margin-right: 11rem;
+      }
+      .log {
+        display: block;
+        position: absolute;
+        top: 50%;
+        right: -11rem;
+        width: 9.5rem;
+        height: 70%;
+        transform: translateY(-50%);
       }
       .felt {
         display: block;

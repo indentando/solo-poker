@@ -42,6 +42,7 @@ The design is deliberately minimal: black background, thin type and nothing that
 - Blinds go up every 10 minutes, players are eliminated when they run out of chips, and the last one standing wins.
 - Configurable **rebuys** when creating a table (how many per player and for how many minutes): a busted player chooses between coming back with a new buy-in or watching.
 - **Settle-up summary** at the end: what each player put in, what they finished with and who owes whom, ready to paste into the group chat.
+- **Hand history** on desktop: a discreet column to the right of the table that fades out as it scrolls up.
 - 30 seconds per turn: when time runs out the player checks if possible, otherwise folds.
 
 **The table**
